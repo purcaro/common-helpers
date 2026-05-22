@@ -1,6 +1,6 @@
 # Make_ssh_public_private_key.py
 
-**Version:** 1.0.0
+**Version:** 1.1.0
 
 SSH key manager and config sync tool. Generates Ed25519 key pairs, maintains `~/.ssh/config`, and deploys public keys to remote hosts—supporting single servers, batch patterns, and Slurm cluster nodes.
 
@@ -91,9 +91,21 @@ If a host already has both keys on disk **and** an entry in `~/.ssh/config`, key
 - Remote SSH password (for `sshpass`)
 - Optional passphrase for newly generated keys
 
+### Help and version
+
+- Run with **no arguments** to print the version and full `--help` text
+- **`--version`** prints the version and exits
+- **`--help`** / **`-h`** prints usage, description, and examples
+
 ## Usage examples
 
 ```bash
+# Version and help (no arguments)
+./Make_ssh_public_private_key.py
+
+# Explicit version
+./Make_ssh_public_private_key.py --version
+
 # Single server (explicit IP)
 ./Make_ssh_public_private_key.py root z011 10.10.16.11
 
@@ -112,8 +124,7 @@ If a host already has both keys on disk **and** an entry in `~/.ssh/config`, key
 
 ## Version
 
-Print the script version:
-
 ```bash
-./Make_ssh_public_private_key.py --version
+./Make_ssh_public_private_key.py              # version + help
+./Make_ssh_public_private_key.py --version    # version only
 ```
