@@ -8,7 +8,7 @@ Shared Python helpers used by scripts in this repository (notably [`commit.py`](
 
 ### Dependencies
 
-- `getch` — read one character without requiring Enter
+- Standard library only (`termios` / `tty` on Unix, `msvcrt` on Windows)
 
 ### API
 
@@ -46,7 +46,7 @@ Ask a yes/no question via raw_input() and return their answer.
 The "answer" return value is one of "yes" or "no".
 ```
 
-When **`immediate_input`** is `True`, uses `getch.getch()`; when `False`, uses normal `input()` (Enter to confirm).
+When **`immediate_input`** is `True`, reads a single keypress via `_getch()`; when `False`, uses normal `input()` (Enter to confirm).
 
 ### Example
 
@@ -61,7 +61,7 @@ if GetYesNoToQuestion.immediate("Proceed?"):
 
 ## git.py
 
-**`Git`** — static helpers for common git repository checks and maintenance.
+**`Git`** — static helpers for common git repository checks, push, and maintenance. All git invocations use **`subprocess`** (no shell).
 
 ### API
 
@@ -75,12 +75,19 @@ Changes the process working directory to the **repository root** using `git rev-
 
 #### `Git.no_changes_exist()`
 
-Returns `True` when there is nothing to commit:
+Returns `True` when there is nothing to commit: **`git status --porcelain`** produces no output (unstaged, staged, and untracked changes are all detected).
 
-- No diff in tracked files (`git diff --exit-code`)
-- No untracked files (porcelain lines starting with `??`)
+#### `Git.unpushed_commits()`
 
-Used by `commit.py` to exit early before prompting.
+Returns `True` when the current branch has commits not yet on its upstream (`git rev-list --count @{upstream}..HEAD` > 0). Returns `False` if there is no upstream or the command fails.
+
+#### `Git.current_branch()`
+
+Returns the abbreviated name of the current branch (`git rev-parse --abbrev-ref HEAD`).
+
+#### `Git.push()`
+
+Runs **`git push`**. On failure (e.g. no upstream configured), retries with **`git push -u origin <branch>`**. Raises `RuntimeError("invalid git push")` if both attempts fail.
 
 #### `Git.repack()`
 
@@ -90,7 +97,7 @@ Runs an aggressive local repack:
 git repack -a -d --depth=250 --window=250 -f
 ```
 
-Raises `Exception("invalid git repack")` on non-zero exit. Not called by `commit.py`; available for manual or scripted repository maintenance. See [GCC mailing list reference](http://gcc.gnu.org/ml/gcc/2007-12/msg00165.html) in source.
+Raises `RuntimeError("invalid git repack")` on non-zero exit. Not called by `commit.py`; available for manual or scripted repository maintenance. See [GCC mailing list reference](http://gcc.gnu.org/ml/gcc/2007-12/msg00165.html) in source.
 
 ### Example
 
@@ -101,4 +108,6 @@ if Git.in_git_folder():
     Git.cd_git_root()
     if not Git.no_changes_exist():
         ...
+    elif Git.unpushed_commits():
+        Git.push()
 ```

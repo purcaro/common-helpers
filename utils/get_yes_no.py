@@ -1,7 +1,25 @@
-import getch
 import sys
 
-class GetYesNoToQuestion(object):
+
+def _getch() -> str:
+    if sys.platform == "win32":
+        import msvcrt
+
+        return msvcrt.getch().decode("utf-8", errors="replace")
+
+    import termios
+    import tty
+
+    fd = sys.stdin.fileno()
+    old = termios.tcgetattr(fd)
+    try:
+        tty.setraw(fd)
+        return sys.stdin.read(1)
+    finally:
+        termios.tcsetattr(fd, termios.TCSADRAIN, old)
+
+
+class GetYesNoToQuestion:
     @staticmethod
     def immediate(question, default="yes"):
         return GetYesNoToQuestion().query_yes_no_base(question, default, True)
@@ -20,7 +38,7 @@ class GetYesNoToQuestion(object):
 
         valid = {"yes":True,   "y":True,  "ye":True,
                  "no":False,     "n":False}
-        if default == None:
+        if default is None:
             prompt = " [y/n] "
         elif default == "yes":
             prompt = " [Y/n] "
@@ -32,7 +50,7 @@ class GetYesNoToQuestion(object):
         while True:
             sys.stdout.write(question + prompt)
             if immediate_input:
-                choice = getch.getch().lower().rstrip()
+                choice = _getch().lower().rstrip()
                 sys.stdout.write(choice + "\n")
             else:
                 choice = input().lower()

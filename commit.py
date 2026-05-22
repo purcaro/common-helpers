@@ -1,9 +1,37 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 
 import os
 import sys
+
+
+def _reexec_in_venv() -> None:
+    """Re-run this script with the project .venv Python when available."""
+    root = os.path.dirname(os.path.abspath(__file__))
+    if sys.platform == "win32":
+        candidates = [os.path.join(root, ".venv", "Scripts", "python.exe")]
+    else:
+        candidates = [
+            os.path.join(root, ".venv", "bin", "python3"),
+            os.path.join(root, ".venv", "bin", "python"),
+        ]
+
+    venv_python = next((p for p in candidates if os.path.isfile(p)), None)
+    if venv_python is None:
+        return
+
+    if os.path.realpath(sys.executable) == os.path.realpath(venv_python):
+        return
+
+    os.execv(venv_python, [venv_python, *sys.argv])
+
+
+_reexec_in_venv()
+
+import argparse
+import subprocess
+from typing import List, Optional
 
 _UTILS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "utils")
 sys.path.insert(0, _UTILS_DIR)
@@ -14,31 +42,56 @@ from colorama import Fore
 from get_yes_no import GetYesNoToQuestion
 from git import Git
 
-def main():
+
+def run_git(*args: str) -> None:
+    result = subprocess.run(["git", *args])
+    if result.returncode != 0:
+        raise RuntimeError(f"git {' '.join(args)} failed")
+
+
+def main(argv: Optional[List[str]] = None) -> int:
+    parser = argparse.ArgumentParser(description="Stage, commit, and push from the git repository root.")
+    parser.add_argument("--no-push", action="store_true", help="Commit only; do not push.")
+    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
+    args = parser.parse_args(argv)
+
     colorama.init(autoreset=True)
 
     if not Git.in_git_folder():
         print(Fore.RED + "not in git folder")
-        sys.exit(1)
+        return 1
+
     Git.cd_git_root()
+
     if Git.no_changes_exist():
-        print(Fore.GREEN + "nothing to commit")
-        #if Git.unpushed_commits():
-        sys.exit(0)
-    if os.system("git status"):
-        raise Exception("invalid git status")
+        if Git.unpushed_commits():
+            print(Fore.YELLOW + "nothing to commit (unpushed commits exist)")
+            if GetYesNoToQuestion.immediate(Fore.YELLOW + "push?"):
+                print(Fore.YELLOW + "pushing...")
+                Git.push()
+        else:
+            print(Fore.GREEN + "nothing to commit")
+        return 0
+
+    run_git("status")
 
     if not GetYesNoToQuestion.immediate(Fore.YELLOW + "commit?"):
-        sys.exit(0)
+        return 0
 
-    if os.system("git add -A"):
-        raise Exception("invalid git add")
+    run_git("add", "-A")
+    run_git("commit")
 
-    if os.system("git commit"):
-        raise Exception("invalid git commit")
+    if args.no_push:
+        return 0
+
     print(Fore.YELLOW + "pushing...")
-    if os.system("git push"):
-        raise Exception("invalid git push")
+    Git.push()
+    return 0
+
 
 if __name__ == "__main__":
-    sys.exit(main())
+    try:
+        raise SystemExit(main())
+    except RuntimeError as exc:
+        print(Fore.RED + str(exc), file=sys.stderr)
+        raise SystemExit(1)
