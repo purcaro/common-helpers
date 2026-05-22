@@ -3,6 +3,8 @@
 # Add to ~/.bashrc:
 #   source /home/mjp/common-helpers/bash-shortcuts.sh
 
+_COMMON_HELPERS="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 # Editor
 export EDITOR='emacs -nw'
 
@@ -24,7 +26,7 @@ PROMPT_COMMAND='_set_prompt; _set_title'
 export HISTSIZE=50000
 
 # PATH
-export PATH=/home/mjp/bin:/home/mjp/.local/bin:/home/mjp/common-helpers:$PATH
+export PATH=/home/mjp/bin:/home/mjp/.local/bin:${_COMMON_HELPERS}:$PATH
 
 # Aliases
 alias dum='du -hc --max-depth=1'
@@ -36,10 +38,11 @@ alias   l='ls -lh'
 alias  ll='ls -lha'
 alias  la='ls -A'
 alias   t='tree --charset=ASCI'
-alias  gg='/home/mjp/common-helpers/commit.py'
+alias  gg="${_COMMON_HELPERS}/commit.py"
+alias   a="source '${_COMMON_HELPERS}/bash-shortcuts.sh'"
 alias qmv='qmv --format=destination-only'
 alias dlmp3='yt-dlp -x --extract-audio --audio-format mp3'
-alias   c='~/bin/count_files.sh'
+alias   c="${_COMMON_HELPERS}/count_files.sh"
 alias   d='du -hc -d 1 | sort -h'
 
 # make clean (separate from c=count_files.sh)
