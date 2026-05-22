@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+__version__ = "1.0.0"
+
 import os
 import sys
 import argparse
@@ -274,6 +276,7 @@ Examples:
     
     parser.add_argument("--batch", action="store_true", help="Process multiple hosts using pattern expansion")
     parser.add_argument("--slurm", metavar="FILE", help="Deploy to all nodes defined in a slurm.conf file")
+    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
 
     args = parser.parse_args()
 
