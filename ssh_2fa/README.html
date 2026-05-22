@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SSH 2FA with Internal Network Bypass</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 0 20px;
+            background-color: #fafafa;
+        }
+        h1 {
+            color: #1a365d;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #2c5282;
+            margin-top: 30px;
+        }
+        code {
+            background-color: #edf2f7;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+            font-size: 0.9em;
+        }
+        pre {
+            background-color: #1a202c;
+            color: #fff;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+        }
+        pre code {
+            background-color: transparent;
+            color: inherit;
+            padding: 0;
+        }
+        ul {
+            padding-left: 20px;
+        }
+        li {
+            margin-bottom: 8px;
+        }
+        .note {
+            background-color: #ebf8ff;
+            border-left: 4px solid #3182ce;
+            padding: 12px 20px;
+            margin: 20px 0;
+            border-radius: 0 6px 6px 0;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>SSH 2-Factor Authentication with Internal Network Bypass</h1>
+    <p>This configuration deploys Two-Factor Authentication via Google Authenticator (<code>libpam-google-authenticator</code>) for SSH logins on Ubuntu 22.04/24.04 LTS.</p>
+
+    <h2>Architecture & Authentication Logic</h2>
+    <ul>
+        <li><strong>External Connections (Internet):</strong> Users are restricted to <strong>Password + TOTP Verification Code</strong>. SSH Keys alone are not accepted externally, and plain password logins without 2FA are blocked.</li>
+        <li><strong>Internal Connections (192.168.1.0/24):</strong> Users can authenticate via standard <strong>SSH Key OR plain Password</strong> without triggering a 2FA prompt (convenient for home/office environments routed natively through a Ubiquiti UDM Ultra gateway).</li>
+    </ul>
+
+    <h2>Setup Walkthrough</h2>
+    <ol>
+        <li>
+            <p>Run the initialization tool as your normal user account:</p>
+            <pre><code>google-authenticator</code></pre>
+        </li>
+        <li>
+            <p>Answer the setup wizard prompts as follows:</p>
+            <ul>
+                <li><strong>Time-based tokens?</strong> <code>y</code></li>
+                <li><strong>Scan QR Code:</strong> Pull out your phone and scan the terminal text block.</li>
+                <li><strong>Emergency scratch codes:</strong> Copy and save the 5 backup codes securely!</li>
+                <li><strong>Update configuration file?</strong> <code>y</code></li>
+                <li><strong>Disallow multiple uses of the same token (replay protection)?</strong> <code>y</code></li>
+                <li><strong>Extend log window to 4 minutes?</strong> <code>n</code> <em>(Keeps a tight 1.5-minute drift allowance).</em></li>
+                <li><strong>Enable rate-limiting?</strong> <code>y</code></li>
+            </ul>
+        </li>
+    </ol>
+
+    <div class="note">
+        <strong>💡 Accidental Input Fix:</strong> If you mistakenly answered <code>y</code> to the 4-minute window expansion, restore the strict security window by running:<br>
+        <code>sed -i '/^" WINDOW_SIZE/d' ~/.google_authenticator</code>
+    </div>
+
+    <h2>Troubleshooting & Verification</h2>
+    <p>If your terminal client uses active connection persistence (<code>ControlMaster</code>), it will reuse open background sockets and bypass the new 2FA prompts entirely.</p>
+    
+    <p>To force a completely raw, non-cached handshake for testing, execute:</p>
+    <pre><code>ssh -p 9870 -o ControlMaster=no mjp@starr3.mine.nu</code></pre>
+
+    <p>To drop and terminate lingering background multiplex paths entirely:</p>
+    <pre><code>ssh -O exit -p 9870 mjp@starr3.mine.nu</code></pre>
+
+</body>
+</html>
