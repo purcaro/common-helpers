@@ -5,36 +5,16 @@ __version__ = "1.1.0"
 import os
 import sys
 
+_ROOT = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.join(_ROOT, "utils"))
 
-def _reexec_in_venv() -> None:
-    """Re-run this script with the project .venv Python when available."""
-    root = os.path.dirname(os.path.abspath(__file__))
-    if sys.platform == "win32":
-        candidates = [os.path.join(root, ".venv", "Scripts", "python.exe")]
-    else:
-        candidates = [
-            os.path.join(root, ".venv", "bin", "python3"),
-            os.path.join(root, ".venv", "bin", "python"),
-        ]
+from reexec_venv import reexec_in_venv
 
-    venv_python = next((p for p in candidates if os.path.isfile(p)), None)
-    if venv_python is None:
-        return
-
-    if os.path.realpath(sys.executable) == os.path.realpath(venv_python):
-        return
-
-    os.execv(venv_python, [venv_python, *sys.argv])
-
-
-_reexec_in_venv()
+reexec_in_venv(_ROOT)
 
 import argparse
 import subprocess
 from typing import List, Optional
-
-_UTILS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "utils")
-sys.path.insert(0, _UTILS_DIR)
 
 import colorama
 from colorama import Fore
