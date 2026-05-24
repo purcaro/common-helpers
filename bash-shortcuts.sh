@@ -45,6 +45,10 @@ alias dlmp3='yt-dlp -x --extract-audio --audio-format mp3'
 alias   c="${_COMMON_HELPERS}/count_files.sh"
 alias   d='du -hc -d 1 | sort -h'
 alias  sq="sudo EDITOR='emacs -nw' qmv --format=destination-only"
+#alias   h='fc -l'
+#alias   m=$PAGER
+#alias   q='squeue'
+#alias   a='source ~/venv/bin/activate'
 
 # make clean (separate from c=count_files.sh)
 alias mc='make clean'
