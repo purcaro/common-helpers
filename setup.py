@@ -14,6 +14,8 @@ VENV_DIR = ROOT / ".venv"
 
 INSTALL_REQUIRES = [
     "colorama",
+    "pygments",
+    "requests",
 ]
 
 

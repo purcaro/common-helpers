@@ -1,10 +1,35 @@
 #!/usr/bin/env python3
 
 import os
+import sys
+
+
+def _reexec_in_venv() -> None:
+    """Re-run this script with the project .venv Python when available."""
+    root = os.path.dirname(os.path.abspath(__file__))
+    if sys.platform == "win32":
+        candidates = [os.path.join(root, ".venv", "Scripts", "python.exe")]
+    else:
+        candidates = [
+            os.path.join(root, ".venv", "bin", "python3"),
+            os.path.join(root, ".venv", "bin", "python"),
+        ]
+
+    venv_python = next((p for p in candidates if os.path.isfile(p)), None)
+    if venv_python is None:
+        return
+
+    if os.path.realpath(sys.executable) == os.path.realpath(venv_python):
+        return
+
+    os.execv(venv_python, [venv_python, *sys.argv])
+
+
+_reexec_in_venv()
+
 import glob
 import json
 import argparse
-import sys
 import errno
 import requests
 import re
