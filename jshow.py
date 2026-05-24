@@ -1,14 +1,12 @@
 #!/usr/bin/env python3
 
-import importlib.util
 import os
-import subprocess
 import sys
 
-REQUIRED_MODULES = ("pygments", "requests")
 
-
-def _venv_python(root: str) -> str | None:
+def _reexec_in_venv() -> None:
+    """Re-run this script with the project .venv Python when available."""
+    root = os.path.dirname(os.path.abspath(__file__))
     if sys.platform == "win32":
         candidates = [os.path.join(root, ".venv", "Scripts", "python.exe")]
     else:
@@ -16,36 +14,18 @@ def _venv_python(root: str) -> str | None:
             os.path.join(root, ".venv", "bin", "python3"),
             os.path.join(root, ".venv", "bin", "python"),
         ]
-    return next((p for p in candidates if os.path.isfile(p)), None)
 
-
-def _missing_modules() -> list[str]:
-    return [m for m in REQUIRED_MODULES if importlib.util.find_spec(m) is None]
-
-
-def _prepare_environment() -> None:
-    """Use .venv and install jshow dependencies when needed."""
-    root = os.path.dirname(os.path.abspath(__file__))
-    setup_py = os.path.join(root, "setup.py")
-    venv_python = _venv_python(root)
-
+    venv_python = next((p for p in candidates if os.path.isfile(p)), None)
     if venv_python is None:
-        subprocess.check_call([sys.executable, setup_py, "bootstrap"])
-        venv_python = _venv_python(root)
-        if venv_python is None:
-            sys.exit("error: failed to create .venv; run ./setup.py")
+        return
 
-    if os.path.realpath(sys.executable) != os.path.realpath(venv_python):
-        os.execv(venv_python, [venv_python, *sys.argv])
+    if os.path.realpath(sys.executable) == os.path.realpath(venv_python):
+        return
 
-    if _missing_modules():
-        subprocess.check_call([sys.executable, setup_py, "bootstrap"])
-        if _missing_modules():
-            missing = ", ".join(_missing_modules())
-            sys.exit(f"error: missing packages ({missing}); run ./setup.py")
+    os.execv(venv_python, [venv_python, *sys.argv])
 
 
-_prepare_environment()
+_reexec_in_venv()
 
 import glob
 import json
