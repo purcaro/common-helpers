@@ -7,8 +7,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-from setuptools import setup
-
 ROOT = Path(__file__).resolve().parent
 VENV_DIR = ROOT / ".venv"
 
@@ -64,6 +62,8 @@ if __name__ == "__main__":
     if len(sys.argv) == 1 or sys.argv[1] == "bootstrap":
         bootstrap()
         raise SystemExit(0)
+
+from setuptools import setup
 
 setup(
     name="common-helpers",
