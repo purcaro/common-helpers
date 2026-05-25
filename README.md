@@ -24,6 +24,7 @@ source /home/mjp/common-helpers/bash-shortcuts.sh
 | [`commit.py`](commit.py) | Interactive git helper: status, stage all, commit, push. Alias **`gg`** in `bash-shortcuts.sh`. See [`commit.md`](commit.md). |
 | [`Make_ssh_public_private_key.py`](Make_ssh_public_private_key.py) | Generate Ed25519 keys, update `~/.ssh/config`, deploy keys to remote hosts (single, batch, or Slurm). See [`Make_ssh_public_private_key.md`](Make_ssh_public_private_key.md). |
 | [`count_files.sh`](count_files.sh) | Count files (alias **`c`** in `bash-shortcuts.sh`). |
+| [`clean_cache.sh`](clean_cache.sh) | Clear Chrome, Chromium, Firefox, and pip cache files. |
 | [`bash-shortcuts.sh`](bash-shortcuts.sh) | Aliases, `PATH`, prompt, and editor settings for daily use. |
 | [`setup.py`](setup.py) | Bootstraps `.venv/` and installs required packages. |
 | [`utils/`](utils/) | Shared Python helpers (`git.py`, `get_yes_no.py`). See [`utils/README.md`](utils/README.md). |
