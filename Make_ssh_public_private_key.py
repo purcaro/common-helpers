@@ -24,6 +24,40 @@ def _normalize_ipv4(ip: str) -> str:
     except ValueError:
         return ip.strip()
 
+def is_full_ipv4(ip: str) -> bool:
+    """True when ip is a dotted IPv4 address (not a subnet prefix like 10.5.19)."""
+    parts = ip.strip().split(".")
+    if len(parts) != 4:
+        return False
+    try:
+        return all(0 <= int(p) <= 255 for p in parts)
+    except ValueError:
+        return False
+
+
+def resolve_server_ip(host: str, base_ip: Optional[str]) -> str:
+    """Resolve target IP from CLI base/subnet or /etc/hosts."""
+    if not base_ip:
+        return lookup_ip_in_etc_hosts(host) or host
+    if is_full_ipv4(base_ip):
+        return _normalize_ipv4(base_ip)
+    match = re.search(r"(\d+)$", host)
+    if match:
+        return f"{base_ip}.{int(match.group(1))}"
+    return base_ip
+
+
+def report_process_error(prefix: str, error: subprocess.CalledProcessError) -> None:
+    """Print subprocess exit code and captured output."""
+    print(f"{prefix}: exit {error.returncode}", file=sys.stderr)
+    if error.stdout:
+        out = error.stdout.decode(errors="replace") if isinstance(error.stdout, bytes) else error.stdout
+        print(out.rstrip(), file=sys.stderr)
+    if error.stderr:
+        err = error.stderr.decode(errors="replace") if isinstance(error.stderr, bytes) else error.stderr
+        print(err.rstrip(), file=sys.stderr)
+
+
 def lookup_ip_in_etc_hosts(hostname: str) -> Optional[str]:
     """Return the IP for hostname from /etc/hosts if present."""
     if not hostname or not HOSTS_FILE.is_file():
@@ -137,9 +171,10 @@ class SSHKeyManager:
         try:
             subprocess.run([
                 "ssh-keygen", "-t", "ed25519", "-f", str(self.key_path), "-N", self.key_passphrase
-            ], check=True, stdout=subprocess.DEVNULL)
-        except subprocess.CalledProcessError:
+            ], check=True, capture_output=True)
+        except subprocess.CalledProcessError as e:
             print("[ERROR] Failed to generate SSH key.", file=sys.stderr)
+            report_process_error("[ERROR] ssh-keygen", e)
             sys.exit(1)
 
     def update_ssh_config(self):
@@ -168,9 +203,22 @@ class SSHKeyManager:
             env["SSHPASS"] = self.ssh_password
         try:
             with open(self.pub_key_path, 'rb') as pub_file:
-                subprocess.run(ssh_cmd, stdin=pub_file, env=env, check=True, stderr=subprocess.DEVNULL)
+                subprocess.run(
+                    ssh_cmd,
+                    stdin=pub_file,
+                    env=env,
+                    check=True,
+                    capture_output=True,
+                )
             print(f"[SUCCESS] Public key copied to {self.server_alias}.")
-        except Exception as e:
+        except subprocess.CalledProcessError as e:
+            print(
+                f"[ERROR] Failed to copy key to {self.server_alias} "
+                f"({self.username}@{self.server_ip}):",
+                file=sys.stderr,
+            )
+            report_process_error("[ERROR] ssh", e)
+        except FileNotFoundError as e:
             print(f"[ERROR] Failed to copy key to {self.server_alias}: {e}", file=sys.stderr)
 
     def run(self):
@@ -317,16 +365,7 @@ Examples:
 
     print(f"\n--- PROCESSING {len(target_hosts)} HOST(S) ---")
     for host in target_hosts:
-        server_ip = base_ip
-        if base_ip:
-            # If we have a base IP, try to append the numeric suffix from the hostname
-            match = re.search(r'(\d+)$', host)
-            if match:
-                server_ip = f"{base_ip}.{int(match.group(1))}"
-            # Otherwise, use base_ip as a literal (common for single-server mode)
-        else:
-            # Fallback to etc hosts resolution
-            server_ip = lookup_ip_in_etc_hosts(host) or host
+        server_ip = resolve_server_ip(host, base_ip)
 
         manager = SSHKeyManager(args.username, host, server_ip, ssh_password, key_passphrase)
         manager.run()
