@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-__version__ = "1.1.0"
+__version__ = "1.2.0"
 
 import os
 import sys
@@ -159,6 +159,50 @@ class SSHKeyManager:
             print(f"[INFO] Updated ~/.ssh/config: '{self.server_alias}' HostName changed to '{new_ip}'.")
         return changed
 
+    def remove_duplicate_host_blocks(self) -> bool:
+        """Collapse repeated 'Host <alias>' blocks into one, keeping the first.
+
+        Earlier runs could append a second block for an alias that was already
+        present, leaving stale/conflicting entries. This keeps the first block for
+        the alias and drops any later duplicates (their Host line plus body, up to
+        the next Host line). Unrelated host blocks are left untouched.
+        """
+        if not self.config_file.exists():
+            return False
+
+        lines = self.config_file.read_text().splitlines(keepends=True)
+        new_lines = []
+        seen_target = False
+        skipping = False
+        removed = False
+
+        for line in lines:
+            stripped = line.strip()
+            if stripped.lower().startswith("host "):
+                hosts = stripped.split()[1:]
+                is_target = self.server_alias in hosts
+                if is_target and seen_target:
+                    # Duplicate alias block: drop its Host line and body.
+                    skipping = True
+                    removed = True
+                    continue
+                if is_target:
+                    seen_target = True
+                skipping = False
+                new_lines.append(line)
+            elif skipping:
+                removed = True
+                continue
+            else:
+                new_lines.append(line)
+
+        if removed:
+            with open(self.config_file, "w") as f:
+                f.writelines(new_lines)
+            self.config_file.chmod(0o600)
+            print(f"[INFO] Removed duplicate '{self.server_alias}' block(s) from ~/.ssh/config.")
+        return removed
+
     def is_already_configured(self) -> bool:
         host_exists = self.get_existing_ip_from_config() is not None
         keys_exist = self.key_path.exists() and self.pub_key_path.exists()
@@ -229,6 +273,20 @@ class SSHKeyManager:
         if hosts_ip and _normalize_ipv4(hosts_ip) != _normalize_ipv4(self.server_ip):
             print(f"[INFO] Using IP '{hosts_ip}' from /etc/hosts for '{self.server_alias}'.")
             self.server_ip = hosts_ip
+
+        # Guard: never write a malformed address into ~/.ssh/config (or push a key
+        # to a bogus host). This catches doubled octets such as '10.5.16.26.26'
+        # and other non-IPv4 values before they can reach the config file.
+        if not is_full_ipv4(self.server_ip):
+            print(
+                f"[ERROR] Skipping '{self.server_alias}': resolved address "
+                f"'{self.server_ip}' is not a valid IPv4 address.",
+                file=sys.stderr,
+            )
+            return
+
+        # Collapse any stray duplicate blocks for this alias before syncing.
+        self.remove_duplicate_host_blocks()
 
         # Resolution Step 2: Sync with ~/.ssh/config
         existing_config_ip = self.get_existing_ip_from_config()

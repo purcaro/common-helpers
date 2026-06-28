@@ -1,6 +1,6 @@
 # Make_ssh_public_private_key.py
 
-**Version:** 1.1.0
+**Version:** 1.2.0
 
 SSH key manager and config sync tool. Generates Ed25519 key pairs, maintains `~/.ssh/config`, and deploys public keys to remote hosts—supporting single servers, batch patterns, and Slurm cluster nodes.
 
@@ -35,6 +35,8 @@ SSH key manager and config sync tool. Generates Ed25519 key pairs, maintains `~/
 
 - **Updates `HostName`** when the resolved IP changes (keeps config in sync with `/etc/hosts` or CLI input)
 - Skips adding a new block if the host entry already exists (but may still update IP or deploy keys)
+- **Validates the resolved address** before writing: a non-IPv4 value (e.g. a doubled octet like `10.5.16.26.26`) is rejected and the host is skipped rather than written into the config
+- **Collapses duplicate `Host <alias>` blocks** into a single entry (keeps the first; unrelated host blocks are untouched)
 - Config file mode `600`
 
 ### IP resolution (priority order)
