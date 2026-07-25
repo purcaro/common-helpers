@@ -123,22 +123,24 @@ class ZfsSnapshotCleaner:
     def _execute_cleanup(self, dataset_info: dict):
         """Destroy all snapshots for a dataset without prompting."""
         name = dataset_info['name']
-        cmd = f"zfs list -H -t snapshot -o name -S creation -r {name} | xargs -n 1 zfs destroy"
         print(f"\n🔥 Executing cleanup for '{name}'...")
-        self._run_command(cmd)
+        snapshots = self._run_command(
+            ["zfs", "list", "-H", "-t", "snapshot", "-o", "name", "-S", "creation", "-r", name]
+        ).strip()
+        if not snapshots:
+            print(f"  No snapshots found for '{name}', skipping.")
+            return
+        for snap in snapshots.splitlines():
+            self._run_command(["zfs", "destroy", snap])
         print(f"✅ Cleanup complete for '{name}'.")
 
     def _confirm_and_execute(self, dataset_info: dict):
         """Show a destruction warning, ask for confirmation, then run cleanup."""
         name = dataset_info['name']
-        cmd = (
-            f"zfs list -H -t snapshot -o name -S creation -r {name} | xargs -n 1 zfs destroy"
-        )
         print("\n" + "=" * 70)
         print("⚠️  WARNING: You are about to DESTROY ALL SNAPSHOTS for the selected dataset.")
         print("⚠️  This action is IRREVERSIBLE.")
         print(f"\nDataset: {name}")
-        print(f"Command: {cmd}")
         print("=" * 70)
 
         confirm = input(f"Proceed with '{name}'? (yes/no) [no]: ").strip().lower()

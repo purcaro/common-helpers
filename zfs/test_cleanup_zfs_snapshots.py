@@ -180,6 +180,30 @@ class TestGetUserSelection(unittest.TestCase):
         self.assertEqual(result, [self.datasets[0]])
 
 
+class TestExecuteCleanup(unittest.TestCase):
+    def setUp(self):
+        self.cleaner = ZfsSnapshotCleaner(pool_name="tank", threshold_gib=50)
+        self.dataset = {"name": "tank/ds1", "used_bytes": 100 * 1024 ** 3}
+
+    @patch.object(ZfsSnapshotCleaner, "_run_command")
+    def test_no_snapshots_skips_destroy(self, mock_run):
+        mock_run.return_value = ""
+        self.cleaner._execute_cleanup(self.dataset)
+        mock_run.assert_called_once()  # only the list call, no destroy
+
+    @patch.object(ZfsSnapshotCleaner, "_run_command")
+    def test_destroys_each_snapshot(self, mock_run):
+        mock_run.side_effect = [
+            "tank/ds1@snap1\ntank/ds1@snap2\n",  # list call
+            "",  # destroy snap1
+            "",  # destroy snap2
+        ]
+        self.cleaner._execute_cleanup(self.dataset)
+        self.assertEqual(mock_run.call_count, 3)
+        mock_run.assert_any_call(["zfs", "destroy", "tank/ds1@snap1"])
+        mock_run.assert_any_call(["zfs", "destroy", "tank/ds1@snap2"])
+
+
 class TestConfirmAndExecute(unittest.TestCase):
     def setUp(self):
         self.cleaner = ZfsSnapshotCleaner(pool_name="tank", threshold_gib=50)
