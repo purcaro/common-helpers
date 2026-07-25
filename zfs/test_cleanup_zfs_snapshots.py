@@ -279,6 +279,22 @@ class TestRun(unittest.TestCase):
         mock_exec.assert_any_call(self.datasets[1])
 
     @patch.object(ZfsSnapshotCleaner, "_execute_cleanup")
+    @patch.object(ZfsSnapshotCleaner, "_confirm_all", return_value=True)
+    @patch.object(ZfsSnapshotCleaner, "_get_user_selection")
+    @patch.object(ZfsSnapshotCleaner, "_get_snapshot_usage")
+    @patch.object(ZfsSnapshotCleaner, "_check_pool_health")
+    def test_all_executes_deepest_first(self, _health, mock_usage, mock_sel, _confirm, mock_exec):
+        gib = 1024 ** 3
+        parent = {"name": "tank/projects", "used_bytes": 200 * gib}
+        child = {"name": "tank/projects/alphafold", "used_bytes": 100 * gib}
+        grandchild = {"name": "tank/projects/alphafold/databases", "used_bytes": 60 * gib}
+        mock_usage.return_value = [parent, child, grandchild]
+        mock_sel.return_value = [parent, child, grandchild]
+        self.cleaner.run()
+        calls = [c.args[0]['name'] for c in mock_exec.call_args_list]
+        self.assertEqual(calls, [grandchild['name'], child['name'], parent['name']])
+
+    @patch.object(ZfsSnapshotCleaner, "_execute_cleanup")
     @patch.object(ZfsSnapshotCleaner, "_confirm_all", return_value=False)
     @patch.object(ZfsSnapshotCleaner, "_get_user_selection")
     @patch.object(ZfsSnapshotCleaner, "_get_snapshot_usage")

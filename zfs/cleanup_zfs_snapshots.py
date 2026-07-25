@@ -177,7 +177,10 @@ class ZfsSnapshotCleaner:
             if not self._confirm_all(datasets_to_process):
                 print("\n🚫 Operation cancelled.")
                 return
-            for i, dataset_info in enumerate(datasets_to_process):
+            # Process deepest paths first so child datasets are cleaned before
+            # their parents (parent's recursive list would otherwise wipe children early).
+            ordered = sorted(datasets_to_process, key=lambda d: (-d['name'].count('/'), d['name']))
+            for i, dataset_info in enumerate(ordered):
                 print(f"\n--- Processing {i + 1} of {len(datasets_to_process)} ---")
                 self._execute_cleanup(dataset_info)
         else:
