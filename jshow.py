@@ -24,7 +24,7 @@ def colorize(json, force=None):
     # https://stackoverflow.com/questions/25638905/coloring-json-output-in-python
     if force or sys.stdout.isatty():
         colorful_json = highlight(json, lexers.JsonLexer(),
-                                  formatters.TerminalFormatter())
+                                  formatters.Terminal256Formatter(style='monokai'))
         return colorful_json
     return json
 
